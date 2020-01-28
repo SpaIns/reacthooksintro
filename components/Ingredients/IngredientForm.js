@@ -9,12 +9,14 @@ const IngredientForm = React.memo(props => {
   // 1) Current state snapshot for this re-render
   // 2) Function that allows update of current state
   //    Updated state by replacing entire state. Not just a portion of state
-  const [inputState, setInputState] = useState({title: '', amount: ''})
+  const [enteredTitle, setEnteredTitle] = useState('')
   // Above is an example of array destructuring; ES6 feature
+  const [enteredAmount, setEnteredAmount] = useState('')
 
+  // Can't use hooks in other functions, or conditional statements; must be root level.
   const submitHandler = event => {
     event.preventDefault();
-    // ...
+    props.onAddIngredient({title: enteredTitle, amount: enteredAmount})
   };
 
   // Note we need to do onChange using prev state, since using cur state
@@ -25,26 +27,17 @@ const IngredientForm = React.memo(props => {
         <form onSubmit={submitHandler}>
           <div className="form-control">
             <label htmlFor="title">Name</label>
-            <input type="text" id="title" value={inputState.title}
+            <input type="text" id="title" value={enteredTitle}
             onChange={event => {
-              // Since event isn't always updating the way that might
-              // be intuitive, we need to store it seperately
-              // to prevent errors where the inner function
-              // doesn't have access to the current event
-              const newTitle = event.target.value
-              setInputState((prevInputState) => 
-              ({title: newTitle, amount: prevInputState.amount})
-              )
-            }
+              setEnteredTitle(event.target.value)
+              }
             }/>
           </div>
           <div className="form-control">
             <label htmlFor="amount">Amount</label>
-            <input type="number" id="amount" value={inputState.amount}
+            <input type="number" id="amount" value={enteredAmount}
             onChange={event => {
-              const newAmount = event.target.value
-              setInputState((prevInputState) => 
-              ({title: prevInputState.title, amount: newAmount}))
+              setEnteredAmount(event.target.value)
               }}/>
           </div>
           <div className="ingredient-form__actions">
