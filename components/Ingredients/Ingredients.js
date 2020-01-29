@@ -3,12 +3,15 @@ import React, {useState, useEffect, useCallback} from 'react';
 import IngredientForm from './IngredientForm';
 import Search from './Search';
 import IngredientList from './IngredientList'
+import ErrorModal from '../UI/ErrorModal'
 
 // could also be written const ing = () => 
 function Ingredients() {
   const [ings, setIngs] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState()
   const firebase_url = process.env.REACT_APP_FIREBASE_HOOKS
-  const fetchIngsUrl = firebase_url + 'ingredients.json'
+  // const fetchIngsUrl = firebase_url + 'ingredients.json'
 
   // Used to manage side effects - such as HTTP requests
   // Triggered after every render cycle, for every render cycle.
@@ -52,12 +55,14 @@ function Ingredients() {
   }, [])
 
   const addIngHandler = ingredient => {
+    setIsLoading(true)
     // Fetch by default sends GET request; firebase requires POST
     fetch(firebase_url + 'ingredients.json', {
       method: 'POST',
       body: JSON.stringify(ingredient),
       headers: {'Content-Type': 'application/json'},
     }).then(response => {
+      setIsLoading(false)
       // We want the json version of the response; another promise returned
       return response.json().then(responseData => {
         // Response data will contain ID firebase generates
@@ -65,21 +70,34 @@ function Ingredients() {
           {id: responseData.name, ...ingredient}])
       })
     }).catch(err => {
+      setError(err.message)
       console.log(err)
     })
   }
 
   // Removes ingredient from list on click. Use ID as thing
   const removeIngHandler = (ingId)=> {
-    // First, create a copy of the ings and remove ing with id ingId
-    // ings.find((ing) => (ing.id === ingId))
-      // Not needed; close though. just filter, since filter returns a copy
-    setIngs(prevIngs => prevIngs.filter((ing) => ing.id !== ingId))
+    setIsLoading(true)
+    fetch(`${firebase_url}ingredients/${ingId}.json`, {
+      method: 'DELETE',
+    }).then(response => {
+      setIsLoading(false)
+      setIngs(prevIngs => prevIngs.filter((ing) => ing.id !== ingId))
+    }).catch(err => {
+      setError(err.message)
+      console.log(err)
+    })
+  }
+
+  const clearError = () => {
+    setError(null)
+    setIsLoading(false)
   }
 
   return (
     <div className="App">
-      <IngredientForm onAddIngredient={addIngHandler}/>
+      {error && <ErrorModal onClose={clearError}>{error}</ErrorModal>}
+      <IngredientForm onAddIngredient={addIngHandler} loading={isLoading}/>
 
       <section>
         <Search onLoadIngs={filterIngsHandler}/>
