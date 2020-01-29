@@ -18,7 +18,7 @@ const Search = React.memo(props => {
   useEffect(() => {
     // Set a timer so we only update if the user stops to type
     // we only run request if update is static from last check
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       // EnteredFilter is set to equal whatever it was @ start of timer
       // use our ref from the hook to see current value
       if (enteredFilter === inputRef.current.value) {
@@ -44,7 +44,14 @@ const Search = React.memo(props => {
         ).catch(err => console.log(err))
       }
     },500)
-
+    // We can return a cleanup function @ end of use effect; not required.
+    // This function is run the next time useEffect is called.
+    // If [] is passed as dependancies, cleanup called when component unmounts
+    return () => {
+      // Clear out our old timer before we set a new one
+      // Stops us from creating a bunch of redundant timers in memory
+      clearTimeout(timer)
+    }
   }, [fetchIngsUrl, enteredFilter, onLoadIngs, inputRef])
 
   return (
