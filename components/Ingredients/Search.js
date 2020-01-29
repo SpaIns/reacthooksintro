@@ -1,15 +1,60 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import Card from '../UI/Card';
 import './Search.css';
 
 const Search = React.memo(props => {
+  const [enteredFilter, setEnteredFilter] = useState('')
+  const firebase_url = process.env.REACT_APP_FIREBASE_HOOKS
+  const fetchIngsUrl = firebase_url + 'ingredients.json'
+  
+  /// Object destructuing
+  const {onLoadIngs} = props
+
+  // Get a reference via a hook
+  const inputRef = useRef()
+
+  // Set an HTTP request whenever the enteredFilter changes
+  useEffect(() => {
+    // Set a timer so we only update if the user stops to type
+    // we only run request if update is static from last check
+    setTimeout(() => {
+      // EnteredFilter is set to equal whatever it was @ start of timer
+      // use our ref from the hook to see current value
+      if (enteredFilter === inputRef.current.value) {
+        // Backticks let us add string interpolation
+        const query = enteredFilter.length === 0 ? '' 
+          : `?orderBy="title"&equalTo="${enteredFilter}"`
+        fetch(fetchIngsUrl + query).then(response => 
+          response.json().then(responseData => {
+            const loadedIngs = []
+            for (const key in responseData) {
+              loadedIngs.push({
+                id: key,
+                title: responseData[key].title,
+                amount: responseData[key].amount
+              })
+            }
+            // Trigger something in Ingredients.js
+            // Trigger changing of our ingredients.
+              // B/c this will reload Ings, Search is reloaded
+              // Thus, useCallBack required on Ings.onLoad
+            onLoadIngs(loadedIngs)
+          })
+        ).catch(err => console.log(err))
+      }
+    },500)
+
+  }, [fetchIngsUrl, enteredFilter, onLoadIngs, inputRef])
+
   return (
     <section className="search">
       <Card>
         <div className="search-input">
           <label>Filter by Title</label>
-          <input type="text" />
+          <input type="text" value={enteredFilter} 
+          onChange={event => setEnteredFilter(event.target.value)}
+          ref={inputRef}/>
         </div>
       </Card>
     </section>

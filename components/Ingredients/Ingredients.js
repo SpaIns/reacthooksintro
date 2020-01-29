@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 
 import IngredientForm from './IngredientForm';
 import Search from './Search';
@@ -13,25 +13,27 @@ function Ingredients() {
   // Used to manage side effects - such as HTTP requests
   // Triggered after every render cycle, for every render cycle.
   // Works like componentDidUpdate
-  useEffect( () =>
-    fetch(fetchIngsUrl).then(response => 
-      response.json().then(responseData => {
-        const loadedIngs = []
-        for (const key in responseData) {
-          loadedIngs.push({
-            id: key,
-            title: responseData[key].title,
-            amount: responseData[key].amount
-          })
-        }
-        setIngs(loadedIngs)
-      })
-    ).catch(err => console.log(err)),
-    // Second arg is array of dependencies.
-    // If left empty, acts as componentDidMount;
-    //  runs only once after first render
-    [fetchIngsUrl]
-  )
+  // useEffect( () =>
+  //   fetch(fetchIngsUrl).then(response => 
+  //     response.json().then(responseData => {
+  //       const loadedIngs = []
+  //       for (const key in responseData) {
+  //         loadedIngs.push({
+  //           id: key,
+  //           title: responseData[key].title,
+  //           amount: responseData[key].amount
+  //         })
+  //       }
+  //       setIngs(loadedIngs)
+  //     })
+  //   ).catch(err => console.log(err)),
+  //   // Second arg is array of dependencies.
+  //   // If left empty, acts as componentDidMount;
+  //   //  runs only once after first render
+  //   [fetchIngsUrl]
+  // )
+  // Currently fetching ingredients in Search implicitly by doing a request
+  // with no filter enabled at the start.
 
   // Can use useEffect/useState as much as you want.
   useEffect(() => {
@@ -41,6 +43,13 @@ function Ingredients() {
 
   // If you fetch as you render, the state updates. Then re-renders. Then you fetch
   // End up in infinite loop, thus use useEffect
+
+
+  // Use callback takes 2 args; the function, and the dependecies of it
+  // Caches then function for re-render cycles unless dependancy changes
+  const filterIngsHandler = useCallback((filteredIngs) => {
+    setIngs(filteredIngs)
+  }, [])
 
   const addIngHandler = ingredient => {
     // Fetch by default sends GET request; firebase requires POST
@@ -73,7 +82,7 @@ function Ingredients() {
       <IngredientForm onAddIngredient={addIngHandler}/>
 
       <section>
-        <Search />
+        <Search onLoadIngs={filterIngsHandler}/>
         <IngredientList ingredients={ings} onRemoveItem={removeIngHandler}/>
       </section>
     </div>
