@@ -89,7 +89,8 @@ function Ingredients() {
     // setIngs(filteredIngs)
   }, [])
 
-  const addIngHandler = ingredient => {
+  // This function shouldn't ever change, so we add useCallback w/ no dependancies 
+  const addIngHandler = useCallback(ingredient => {
     dispatchHttp({type: 'SEND'})
     // Fetch by default sends GET request; firebase requires POST
     fetch(firebase_url + 'ingredients.json', {
@@ -109,10 +110,10 @@ function Ingredients() {
       dispatchHttp({type: 'ERROR', error: err.message})
       console.log(err)
     })
-  }
+  }, [])
 
   // Removes ingredient from list on click. Use ID as thing
-  const removeIngHandler = (ingId)=> {
+  const removeIngHandler = useCallback((ingId)=> {
     dispatchHttp({type: 'SEND'})
     fetch(`${firebase_url}ingredients/${ingId}.json`, {
       method: 'DELETE',
@@ -123,7 +124,7 @@ function Ingredients() {
       dispatchHttp({type: 'ERROR', error: err.message})
       console.log(err)
     })
-  }
+  },[])
 
   const clearError = () => {
     dispatchHttp({type: 'CLEAR'})
