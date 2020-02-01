@@ -1,4 +1,4 @@
-import React, {useReducer, useState, useEffect, useCallback} from 'react';
+import React, {useReducer, useState, useEffect, useCallback, useMemo} from 'react';
 
 import IngredientForm from './IngredientForm';
 import Search from './Search';
@@ -110,7 +110,7 @@ function Ingredients() {
       dispatchHttp({type: 'ERROR', error: err.message})
       console.log(err)
     })
-  }, [])
+  }, [firebase_url])
 
   // Removes ingredient from list on click. Use ID as thing
   const removeIngHandler = useCallback((ingId)=> {
@@ -124,11 +124,18 @@ function Ingredients() {
       dispatchHttp({type: 'ERROR', error: err.message})
       console.log(err)
     })
-  },[])
+  },[firebase_url])
 
-  const clearError = () => {
+  const clearError = useCallback(() => {
     dispatchHttp({type: 'CLEAR'})
-  }
+  }, [])
+
+  // Use memo saves a value
+  // Second arg tells React when to update the memoized value, based on when a dependency updates
+  // There's a slight cost to it, so only need to use it when it might be a heavier process
+  const ingredientList = useMemo(() =>{
+    return <IngredientList ingredients={userIngs} onRemoveItem={removeIngHandler}/>
+  }, [userIngs, removeIngHandler])
 
   return (
     <div className="App">
@@ -137,7 +144,7 @@ function Ingredients() {
 
       <section>
         <Search onLoadIngs={filterIngsHandler}/>
-        <IngredientList ingredients={userIngs} onRemoveItem={removeIngHandler}/>
+        {ingredientList}
       </section>
     </div>
   );

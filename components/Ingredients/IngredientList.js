@@ -2,7 +2,9 @@ import React from 'react';
 
 import './IngredientList.css';
 
-const IngredientList = React.memo(props => {
+// Can run with React.memo() wrapper
+
+const IngredientList = props => {
   return (
     <section className="ingredient-list">
       <h2>Loaded Ingredients</h2>
@@ -16,6 +18,6 @@ const IngredientList = React.memo(props => {
       </ul>
     </section>
   );
-});
+};
 
 export default IngredientList;
