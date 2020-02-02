@@ -1,0 +1,16 @@
+version: '3'
+services:
+  web:
+    build:
+      context: . # Where to see files/folders pulled for container build
+    ports:
+      # Host:container; 
+      - "3000:80"
+    volumes:
+      - /app/node_modules # Do not try to map anything against node_modules inside the container
+      - .:/app # map outside the container into the app folder in the container
+  # server:
+  #   build:
+  #     context: .
+  #   ports:
+  #     - "3000:80"
