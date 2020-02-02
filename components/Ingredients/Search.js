@@ -2,11 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 
 import Card from '../UI/Card';
 import './Search.css';
+import useHttp from '../../hooks/http'
+import ErrorModal from '../UI/ErrorModal'
 
 const Search = React.memo(props => {
   const [enteredFilter, setEnteredFilter] = useState('')
   const firebase_url = process.env.REACT_APP_FIREBASE_HOOKS
   const fetchIngsUrl = firebase_url + 'ingredients.json'
+  const {isLoading, data, error, sendRequest, clear} = useHttp()
   
   /// Object destructuing
   const {onLoadIngs} = props
@@ -25,23 +28,7 @@ const Search = React.memo(props => {
         // Backticks let us add string interpolation
         const query = enteredFilter.length === 0 ? '' 
           : `?orderBy="title"&equalTo="${enteredFilter}"`
-        fetch(fetchIngsUrl + query).then(response => 
-          response.json().then(responseData => {
-            const loadedIngs = []
-            for (const key in responseData) {
-              loadedIngs.push({
-                id: key,
-                title: responseData[key].title,
-                amount: responseData[key].amount
-              })
-            }
-            // Trigger something in Ingredients.js
-            // Trigger changing of our ingredients.
-              // B/c this will reload Ings, Search is reloaded
-              // Thus, useCallBack required on Ings.onLoad
-            onLoadIngs(loadedIngs)
-          })
-        ).catch(err => console.log(err))
+        sendRequest(fetchIngsUrl + query, 'GET')
       }
     },500)
     // We can return a cleanup function @ end of use effect; not required.
@@ -52,13 +39,33 @@ const Search = React.memo(props => {
       // Stops us from creating a bunch of redundant timers in memory
       clearTimeout(timer)
     }
-  }, [fetchIngsUrl, enteredFilter, onLoadIngs, inputRef])
+  }, [fetchIngsUrl, enteredFilter, inputRef, sendRequest])
+
+  useEffect(() => {
+    if (!isLoading && !error && data) {
+      const loadedIngs = []
+      for (const key in data) {
+        loadedIngs.push({
+          id: key,
+          title: data[key].title,
+          amount: data[key].amount
+        })
+      }
+      // Trigger something in Ingredients.js
+      // Trigger changing of our ingredients.
+        // B/c this will reload Ings, Search is reloaded
+        // Thus, useCallBack required on Ings.onLoad
+      onLoadIngs(loadedIngs)
+    }
+  }, [data, isLoading, error, onLoadIngs])
 
   return (
     <section className="search">
+      {error && <ErrorModal onClose={clear}>{error}</ErrorModal>}
       <Card>
         <div className="search-input">
           <label>Filter by Title</label>
+          {isLoading && <span>Loading...</span>}
           <input type="text" value={enteredFilter} 
           onChange={event => setEnteredFilter(event.target.value)}
           ref={inputRef}/>

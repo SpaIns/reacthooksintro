@@ -1,9 +1,10 @@
-import React, {useReducer, useState, useEffect, useCallback, useMemo} from 'react';
+import React, {useReducer, useEffect, useCallback, useMemo} from 'react';
 
 import IngredientForm from './IngredientForm';
 import Search from './Search';
 import IngredientList from './IngredientList'
 import ErrorModal from '../UI/ErrorModal'
+import useHttp from '../../hooks/http'
 
 
 // Typically create reducer outside function to decouple it
@@ -20,62 +21,32 @@ const ingReducer = (currentIngs, action) => {
   }
 }
 
-// Remember this is state management
-const httpReducer = (httpState, action) => {
-  switch (action.type) {
-    case 'SEND':
-      return {loading: true, error: null}
-    case 'RESPONSE':
-      return {...httpState, loading: false}
-    case 'ERROR':
-      return {loading: false, error: action.error}
-    case 'CLEAR':
-      return {...httpState, error: null}
-    default:
-      throw new Error('Should not get here')
-  }
-}
 
 // could also be written const ing = () => 
 function Ingredients() {
   // Takes reducer and starting state
   const [userIngs, dispatch] = useReducer(ingReducer, [])
-  const [httpState, dispatchHttp] = useReducer(httpReducer, {loading: false, error: null})
-  // const [ings, setIngs] = useState([])
-  // const [isLoading, setIsLoading] = useState(false)
-  // const [error, setError] = useState()
+  const {isLoading, error, data, sendRequest, reqExtra, reqIdentifier, clear } = useHttp()
   const firebase_url = process.env.REACT_APP_FIREBASE_HOOKS
-  // const fetchIngsUrl = firebase_url + 'ingredients.json'
 
-  // Used to manage side effects - such as HTTP requests
-  // Triggered after every render cycle, for every render cycle.
-  // Works like componentDidUpdate
-  // useEffect( () =>
-  //   fetch(fetchIngsUrl).then(response => 
-  //     response.json().then(responseData => {
-  //       const loadedIngs = []
-  //       for (const key in responseData) {
-  //         loadedIngs.push({
-  //           id: key,
-  //           title: responseData[key].title,
-  //           amount: responseData[key].amount
-  //         })
-  //       }
-  //       setIngs(loadedIngs)
-  //     })
-  //   ).catch(err => console.log(err)),
-  //   // Second arg is array of dependencies.
-  //   // If left empty, acts as componentDidMount;
-  //   //  runs only once after first render
-  //   [fetchIngsUrl]
-  // )
-  // Currently fetching ingredients in Search implicitly by doing a request
-  // with no filter enabled at the start.
 
   // Can use useEffect/useState as much as you want.
   useEffect(() => {
-    console.log('RENDERING', userIngs)
-  }, [userIngs])
+    // Only make these updates if we're no longer loading.
+    // Check the identifier
+    if (!isLoading && reqIdentifier === 'REMOVE_INGREDIENT') {
+      dispatch({type: 'DELETE', id: reqExtra})
+    }
+    // otherwise it's an add request. Make sure we don't have an error condition
+    else if (!isLoading && !error && reqIdentifier === 'ADD_INGREDIENT') {
+      dispatch({
+        type: 'ADD',
+        ingredient: {id: data.name, ...reqExtra}
+      })
+    }
+    // These are the only changes we make to ingredients for now.
+    // This triggers on first page load too, but we don't need to handle it.
+  }, [data, reqExtra, reqIdentifier, isLoading, error])
   // ^ means only re-runs when ings changes
 
   // If you fetch as you render, the state updates. Then re-renders. Then you fetch
@@ -91,44 +62,15 @@ function Ingredients() {
 
   // This function shouldn't ever change, so we add useCallback w/ no dependancies 
   const addIngHandler = useCallback(ingredient => {
-    dispatchHttp({type: 'SEND'})
-    // Fetch by default sends GET request; firebase requires POST
-    fetch(firebase_url + 'ingredients.json', {
-      method: 'POST',
-      body: JSON.stringify(ingredient),
-      headers: {'Content-Type': 'application/json'},
-    }).then(response => {
-      dispatchHttp({type: 'RESPONSE'})
-      // We want the json version of the response; another promise returned
-      return response.json().then(responseData => {
-        // Response data will contain ID firebase generates
-        // setIngs(prevIngs => [...prevIngs, 
-        //   {id: responseData.name, ...ingredient}])
-        dispatch({type: 'ADD', ingredient: {id: responseData.name, ...ingredient}})
-      })
-    }).catch(err => {
-      dispatchHttp({type: 'ERROR', error: err.message})
-      console.log(err)
-    })
-  }, [firebase_url])
+    sendRequest(firebase_url + 'ingredients.json', 'POST', JSON.stringify(ingredient), ingredient, 'ADD_INGREDIENT')
+  }, [firebase_url, sendRequest])
 
   // Removes ingredient from list on click. Use ID as thing
   const removeIngHandler = useCallback((ingId)=> {
-    dispatchHttp({type: 'SEND'})
-    fetch(`${firebase_url}ingredients/${ingId}.json`, {
-      method: 'DELETE',
-    }).then(response => {
-      dispatchHttp({type: 'RESPONSE'})
-      dispatch({type: 'DELETE', id: ingId})
-    }).catch(err => {
-      dispatchHttp({type: 'ERROR', error: err.message})
-      console.log(err)
-    })
-  },[firebase_url])
-
-  const clearError = useCallback(() => {
-    dispatchHttp({type: 'CLEAR'})
-  }, [])
+    // dispatchHttp({type: 'SEND'})
+    sendRequest(`${firebase_url}ingredients/${ingId}.json`, 'DELETE',
+      null, ingId, 'REMOVE_INGREDIENT')
+  },[firebase_url, sendRequest])
 
   // Use memo saves a value
   // Second arg tells React when to update the memoized value, based on when a dependency updates
@@ -139,8 +81,8 @@ function Ingredients() {
 
   return (
     <div className="App">
-      {httpState.error && <ErrorModal onClose={clearError}>{httpState.error}</ErrorModal>}
-      <IngredientForm onAddIngredient={addIngHandler} loading={httpState.loading}/>
+      {error && <ErrorModal onClose={clear}>{error}</ErrorModal>}
+      <IngredientForm onAddIngredient={addIngHandler} loading={isLoading}/>
 
       <section>
         <Search onLoadIngs={filterIngsHandler}/>
